@@ -16,12 +16,12 @@ from trl import SFTTrainer
 from transformers import TrainingArguments
 from datasets import load_dataset
 
-# --- CONFIGURATION ---
+
 max_seq_length = 2048 # Mochi has short chats, so this is plenty
 dtype = None          # Auto-detects your GPU settings
 load_in_4bit = True   # CRITICAL: Fits the model into your 6GB VRAM
 
-# 1. LOAD THE BASE MODEL
+
 print("--- Loading Model... ---")
 model, tokenizer = FastLanguageModel.from_pretrained(
     model_name = "unsloth/llama-3-8b-Instruct-bnb-4bit",
@@ -30,8 +30,7 @@ model, tokenizer = FastLanguageModel.from_pretrained(
     load_in_4bit = load_in_4bit,
 )
 
-# 2. ADD LORA ADAPTERS (The "Fine-Tuning" Layer)
-# This creates the "sticky note" on top of the brain that we will write on.
+
 model = FastLanguageModel.get_peft_model(
     model,
     r = 16, # The "Rank" (Intelligence of the adapter). 16 is standard.
@@ -44,8 +43,6 @@ model = FastLanguageModel.get_peft_model(
     random_state = 3407,
 )
 
-# 3. PREPARE THE DATA
-# This turns your JSON file into numbers the AI can read.
 print("--- Processing Data... ---")
 dataset = load_dataset("json", data_files="mochi_data.json", split="train")
 
@@ -63,7 +60,7 @@ def formatting_prompts_func(examples):
 
 dataset = dataset.map(formatting_prompts_func, batched = True)
 
-# 4. START TRAINING
+
 print("--- Starting Training Engine... ---")
 trainer = SFTTrainer(
     model = model,
@@ -95,7 +92,7 @@ trainer_stats = trainer.train()
 print("--- TRAINING COMPLETE! ---")
 print("Saving your new Mochi model to 'lora_model' folder...")
 
-# 5. SAVE THE RESULTS
+
 model.save_pretrained("lora_model")
 tokenizer.save_pretrained("lora_model")
 
