@@ -119,7 +119,7 @@ print("DONE! You can now zip and download the 'lora_model' folder from the files
 # ------------------------------------------------------------------------------------
 
 
-# (FINAL STEP: Step 4 - ZIP IT!)
+# (Google Colab's FINAL STEP: Step 4 - ZIP IT!)
 
 
 !zip -r mochi_lora.zip lora_model
@@ -130,4 +130,75 @@ files.download('mochi_lora.zip')
 # ------------------------------------------------------------------------------------
 
 
+# FINAL STEP TO FINISH THE MODEL INSTALLATION (Step 5):
 
+
+
+from unsloth import FastLanguageModel
+import torch
+from transformers import TextStreamer
+
+# 1. SETUP
+# We use the exact same settings as training to avoid confusion
+max_seq_length = 2048
+dtype = None
+load_in_4bit = True
+
+print("--- 1. Loading the Main Brain (Llama-3) ---")
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name = "unsloth/llama-3-8b-Instruct-bnb-4bit", # The base model
+    max_seq_length = max_seq_length,
+    dtype = dtype,
+    load_in_4bit = load_in_4bit,
+)
+
+print("--- 2. Applying Mochi's Personality ---")
+# This loads your specific folder on top of the base model
+model.load_adapter("mochi_lora/lora_model")
+
+# Set the model to "Inference Mode" (Makes it faster, turns off training features)
+FastLanguageModel.for_inference(model)
+
+print("--- 3. Mochi is Awake! (Type 'quit' to exit) ---")
+
+# We use the chat template so Mochi knows who is speaking
+def chat_with_mochi(user_input):
+    messages = [
+        {"role": "user", "content": user_input},
+    ]
+    
+    # Prepare the input for the model
+    inputs = tokenizer.apply_chat_template(
+        messages,
+        tokenize = True,
+        add_generation_prompt = True, # Tells Mochi "It's your turn now"
+        return_tensors = "pt",
+    ).to("cuda")
+
+    # Streamer makes the text appear word-by-word (like ChatGPT)
+    text_streamer = TextStreamer(tokenizer, skip_prompt = True)
+
+    # Generate the response
+    _ = model.generate(
+        input_ids = inputs,
+        streamer = text_streamer,
+        max_new_tokens = 128, # Cap the response length
+        use_cache = True,
+        temperature = 1.5, # Creativity: 1.5 is high (good for Mochi), 0.1 is robotic
+        min_p = 0.1,
+    )
+
+while True:
+    user_input = input("\nYOU: ")
+    if user_input.lower() == "quit":
+        break
+    print("MOCHI: ", end="")
+    chat_with_mochi(user_input)
+    print("") # New line
+
+
+# ------------------------------------------------------------------------------------
+
+
+
+    
